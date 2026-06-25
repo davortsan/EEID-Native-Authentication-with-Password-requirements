@@ -1,0 +1,36 @@
+@model NativeAuthentication.EEID.Web.Models.Auth.RequiredAttributesViewModel
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <h1 class="mb-3">@Model.Title</h1>
+        <p class="text-muted">El tenant exige atributos adicionales antes de completar el alta.</p>
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            @for (var index = 0; index < Model.Attributes.Count; index++)
+            {
+                <input asp-for="Attributes[index].Name" type="hidden" />
+                <input asp-for="Attributes[index].Type" type="hidden" />
+                <input asp-for="Attributes[index].Required" type="hidden" />
+
+                <div class="mb-3">
+                    <label asp-for="Attributes[index].Value" class="form-label">@Model.Attributes[index].Name</label>
+                    <input asp-for="Attributes[index].Value" class="form-control" />
+                    <span asp-validation-for="Attributes[index].Value" class="text-danger"></span>
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary w-100">Submit attributes</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
