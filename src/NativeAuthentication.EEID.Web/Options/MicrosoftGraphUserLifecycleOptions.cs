@@ -14,6 +14,10 @@ public sealed class MicrosoftGraphUserLifecycleOptions
 
     public string? LastPasswordSetExtensionName { get; init; } = "extension_d697ea7bfcb54949bd86b3f886d023e7_LastPasswordSet";
 
+    public string? LastSuccessSignInExtensionName { get; init; } = "extension_d697ea7bfcb54949bd86b3f886d023e7_LastSuccessSignIn";
+
+    public string? LastFailedSignInExtensionName { get; init; } = "extension_d697ea7bfcb54949bd86b3f886d023e7_LastFailedSignIn";
+
     public string? FailedSignInCountExtensionName { get; init; } = "extension_d697ea7bfcb54949bd86b3f886d023e7_FailedCount";
 
     public string? LockoutEndUtcExtensionName { get; init; } = "extension_d697ea7bfcb54949bd86b3f886d023e7_LockoutUntil";

@@ -67,6 +67,7 @@ public sealed class AuthController : Controller
 
         if (!result.IsSuccess || result.Payload?.IdToken is null)
         {
+            await _microsoftGraphUserLifecycleClient.TrySetLastFailedSignInAsync(model.Email, DateTimeOffset.UtcNow, cancellationToken);
             var failedAttemptState = await _microsoftGraphUserLifecycleClient.RegisterFailedSignInAttemptAsync(model.Email, cancellationToken);
             ModelState.AddModelError(
                 string.Empty,
@@ -92,6 +93,7 @@ public sealed class AuthController : Controller
             return RedirectToAction(nameof(ForgotPassword), new { email = model.Email });
         }
 
+        await _microsoftGraphUserLifecycleClient.TrySetLastSuccessSignInAsync(model.Email, DateTimeOffset.UtcNow, cancellationToken);
         await SignInAsync(result.Payload, passwordPolicyResult.ExpiresAtUtc ?? DateTimeOffset.UtcNow);
         TempData["StatusMessage"] = "Sesión iniciada correctamente.";
         return RedirectToAction(nameof(Profile));
@@ -154,6 +156,7 @@ public sealed class AuthController : Controller
 
         if (!result.IsSuccess || result.Payload?.IdToken is null)
         {
+            await _microsoftGraphUserLifecycleClient.TrySetLastFailedSignInAsync(state.Email, DateTimeOffset.UtcNow, cancellationToken);
             ModelState.AddModelError(string.Empty, result.Message ?? "No fue posible completar MFA.");
             return View(model);
         }

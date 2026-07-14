@@ -14,6 +14,7 @@ The Native Authentication APIs indicated by Microsoft do not support CORS. For t
 - Self-service password reset (SSPR)
 - Password expiration enforcement with Microsoft Graph
 - Temporary account lockout after consecutive failed sign-in attempts
+- Tracking of the last successful classic sign-in and the last failed authentication attempt in External ID custom user attributes
 - Configurable minimum password length and password complexity enforcement for sign-up and password reset
 - Local ASP.NET Core session cookie after obtaining `id_token` and `access_token`
 
@@ -34,7 +35,7 @@ Before running the app, configure the following in your external tenant:
 5. If you use `email + password`, enable that method in the tenant.
 6. If you use SSPR, enable self-service password reset for customer users.
 7. If the flow will require MFA or strong method enrollment, keep the capabilities `registration_required mfa_required`.
-8. If you want password expiration and sign-in lockout policies, create the required custom user attributes in External ID and make sure their programmable names match the values configured in `MicrosoftGraphUserLifecycle`.
+8. If you want password expiration, sign-in lockout policies, and audit timestamps for sign-in activity, create the required custom user attributes in External ID and make sure their programmable names match the values configured in `MicrosoftGraphUserLifecycle`.
 9. The app registration used for `MicrosoftGraphUserLifecycle` must have Microsoft Graph application permission `User.ReadWrite.All` so the app can read and update the custom user attributes used by the repository.
 10. If Microsoft Entra Password Protection is enabled in the tenant, configure its lockout-related thresholds with sufficiently high values so they don't interfere with the failed-attempt policy enforced by this application.
 
@@ -57,7 +58,7 @@ Fill in the `NativeAuthentication` section in `appsettings.json`, or preferably 
 }
 ```
 
-To enforce password expiration, temporary sign-in lockout, and the configurable minimum password length, configure `MicrosoftGraphUserLifecycle` with an app secret or certificate-backed equivalent. This project reads the built-in `lastPasswordChangeDateTime` property when available, falls back to the custom attribute `extension_00000000000000000000000000000000_LastPasswordSet`, and stores lockout state in custom user attributes.
+To enforce password expiration, temporary sign-in lockout, classic sign-in success tracking, failed authentication tracking, and the configurable minimum password length, configure `MicrosoftGraphUserLifecycle` with an app secret or certificate-backed equivalent. This project reads the built-in `lastPasswordChangeDateTime` property when available, falls back to the custom attribute `extension_00000000000000000000000000000000_LastPasswordSet`, and stores lockout state plus sign-in activity timestamps in custom user attributes.
 
 ```json
 {
@@ -66,6 +67,8 @@ To enforce password expiration, temporary sign-in lockout, and the configurable 
     "ClientId": "00000000-0000-0000-0000-000000000000",
     "ClientSecret": "<app-secret>",
     "LastPasswordSetExtensionName": "extension_00000000000000000000000000000000_LastPasswordSet",
+    "LastSuccessSignInExtensionName": "extension_00000000000000000000000000000000_LastSuccessSignIn",
+    "LastFailedSignInExtensionName": "extension_00000000000000000000000000000000_LastFailedSignIn",
     "FailedSignInCountExtensionName": "extension_00000000000000000000000000000000_FailedCount",
     "LockoutEndUtcExtensionName": "extension_00000000000000000000000000000000_LockoutUntil",
     "PasswordMinLength": 15,
@@ -77,27 +80,36 @@ To enforce password expiration, temporary sign-in lockout, and the configurable 
 }
 ```
 
-The custom attribute can be updated in Microsoft Graph with a standard user `PATCH`:
+Custom attributes can be updated in Microsoft Graph with a standard user `PATCH`:
 
 ```http
 PATCH https://graph.microsoft.com/v1.0/users/user@contoso.com
 Content-Type: application/json
 
 {
-  "extension_00000000000000000000000000000000_LastPasswordSet": "2026-06-25T10:30:00.0000000Z"
+  "extension_00000000000000000000000000000000_LastPasswordSet": "2026-06-25T10:30:00.0000000Z",
+  "extension_00000000000000000000000000000000_LastSuccessSignIn": "2026-07-14T09:00:00.0000000Z",
+  "extension_00000000000000000000000000000000_LastFailedSignIn": "2026-07-14T08:55:00.0000000Z"
 }
 ```
 
 And retrieved with `$select`:
 
 ```http
-GET https://graph.microsoft.com/v1.0/users/user@contoso.com?$select=lastPasswordChangeDateTime,extension_00000000000000000000000000000000_LastPasswordSet
+GET https://graph.microsoft.com/v1.0/users/user@contoso.com?$select=lastPasswordChangeDateTime,extension_00000000000000000000000000000000_LastPasswordSet,extension_00000000000000000000000000000000_LastSuccessSignIn,extension_00000000000000000000000000000000_LastFailedSignIn
 ```
 
 To enable temporary account lockout after consecutive failed sign-in attempts, create the custom user attributes referenced by `FailedSignInCountExtensionName` and `LockoutEndUtcExtensionName`. The app stores the consecutive failed-attempt counter and the UTC timestamp until which the account remains blocked. By default, the account is locked after 5 consecutive failed attempts for 30 seconds, and all related values are configurable.
 
-The current configuration expects these lockout attributes to be String-typed custom user attributes:
+To track sign-in activity, create the custom user attributes referenced by `LastSuccessSignInExtensionName` and `LastFailedSignInExtensionName`:
 
+- `LastSuccessSignIn` is updated only after the classic `email + password` sign-in succeeds.
+- `LastFailedSignIn` is updated when authentication fails, including failed password attempts and failed MFA completion.
+
+The current configuration expects these String-typed custom user attributes:
+
+- `extension_00000000000000000000000000000000_LastSuccessSignIn`
+- `extension_00000000000000000000000000000000_LastFailedSignIn`
 - `extension_00000000000000000000000000000000_FailedCount`
 - `extension_00000000000000000000000000000000_LockoutUntil`
 

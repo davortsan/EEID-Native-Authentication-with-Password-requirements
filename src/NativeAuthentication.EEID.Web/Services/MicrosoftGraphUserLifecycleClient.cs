@@ -258,7 +258,76 @@ public sealed class MicrosoftGraphUserLifecycleClient
         return TrySetLastPasswordSetAsync(principal, fallbackEmail, timestampUtc, cancellationToken);
     }
 
+    public Task<bool> TrySetLastSuccessSignInAsync(ClaimsPrincipal principal, string fallbackEmail, DateTimeOffset timestampUtc, CancellationToken cancellationToken)
+        => TrySetCustomTimestampAsync(
+            principal,
+            fallbackEmail,
+            timestampUtc,
+            _options.LastSuccessSignInExtensionName,
+            "LastSuccessSignIn",
+            cancellationToken);
+
+    public Task<bool> TrySetLastSuccessSignInAsync(string fallbackEmail, DateTimeOffset timestampUtc, CancellationToken cancellationToken)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+        return TrySetLastSuccessSignInAsync(principal, fallbackEmail, timestampUtc, cancellationToken);
+    }
+
+    public Task<bool> TrySetLastFailedSignInAsync(string fallbackEmail, DateTimeOffset timestampUtc, CancellationToken cancellationToken)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+        return TrySetCustomTimestampAsync(
+            principal,
+            fallbackEmail,
+            timestampUtc,
+            _options.LastFailedSignInExtensionName,
+            "LastFailedSignIn",
+            cancellationToken);
+    }
+
+    private async Task<bool> TrySetCustomTimestampAsync(
+        ClaimsPrincipal principal,
+        string fallbackEmail,
+        DateTimeOffset timestampUtc,
+        string? extensionName,
+        string attributeLabel,
+        CancellationToken cancellationToken)
+    {
+        if (!IsConfigured())
+        {
+            _logger.LogWarning("Graph user lifecycle is not configured. Skipping {AttributeLabel} update for {FallbackEmail}.", attributeLabel, fallbackEmail);
+            return false;
+        }
+
+        var trimmedExtensionName = extensionName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedExtensionName))
+        {
+            _logger.LogInformation("No {AttributeLabel} extension configured. Skipping custom attribute update for {FallbackEmail}.", attributeLabel, fallbackEmail);
+            return false;
+        }
+
+        var accessToken = await AcquireAccessTokenAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return false;
+        }
+
+        var userId = await ResolveGraphUserIdAsync(principal, fallbackEmail, accessToken, cancellationToken);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            _logger.LogWarning("Could not resolve Graph user id to update {AttributeLabel} for {FallbackEmail}.", attributeLabel, fallbackEmail);
+            return false;
+        }
+
+        return await SetTimestampAttributeAsync(userId, trimmedExtensionName, accessToken, timestampUtc, cancellationToken);
+    }
+
     private async Task<bool> SetLastPasswordSetAsync(string userId, string extensionName, string accessToken, DateTimeOffset timestampUtc, CancellationToken cancellationToken)
+    {
+        return await SetTimestampAttributeAsync(userId, extensionName, accessToken, timestampUtc, cancellationToken);
+    }
+
+    private async Task<bool> SetTimestampAttributeAsync(string userId, string extensionName, string accessToken, DateTimeOffset timestampUtc, CancellationToken cancellationToken)
     {
         return await SetUserAttributesAsync(
             userId,
