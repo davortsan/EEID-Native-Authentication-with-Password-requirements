@@ -57,7 +57,7 @@ Fill in the `NativeAuthentication` section in `appsettings.json`, or preferably 
 }
 ```
 
-To enforce password expiration, temporary sign-in lockout, and the configurable minimum password length, configure `MicrosoftGraphUserLifecycle` with an app secret or certificate-backed equivalent. This project reads the built-in `lastPasswordChangeDateTime` property when available, falls back to the custom attribute `extension_d697ea7bfcb54949bd86b3f886d023e7_LastPasswordSet`, and stores lockout state in custom user attributes.
+To enforce password expiration, temporary sign-in lockout, and the configurable minimum password length, configure `MicrosoftGraphUserLifecycle` with an app secret or certificate-backed equivalent. This project reads the built-in `lastPasswordChangeDateTime` property when available, falls back to the custom attribute `extension_00000000000000000000000000000000_LastPasswordSet`, and stores lockout state in custom user attributes.
 
 ```json
 {
@@ -65,9 +65,9 @@ To enforce password expiration, temporary sign-in lockout, and the configurable 
     "TenantIdOrDomain": "contoso.onmicrosoft.com",
     "ClientId": "00000000-0000-0000-0000-000000000000",
     "ClientSecret": "<app-secret>",
-    "LastPasswordSetExtensionName": "extension_d697ea7bfcb54949bd86b3f886d023e7_LastPasswordSet",
-    "FailedSignInCountExtensionName": "extension_d697ea7bfcb54949bd86b3f886d023e7_FailedCount",
-    "LockoutEndUtcExtensionName": "extension_d697ea7bfcb54949bd86b3f886d023e7_LockoutUntil",
+    "LastPasswordSetExtensionName": "extension_00000000000000000000000000000000_LastPasswordSet",
+    "FailedSignInCountExtensionName": "extension_00000000000000000000000000000000_FailedCount",
+    "LockoutEndUtcExtensionName": "extension_00000000000000000000000000000000_LockoutUntil",
     "PasswordMinLength": 15,
     "PasswordMaxAgeDays": 90,
     "MaxFailedSignInAttempts": 5,
@@ -84,22 +84,22 @@ PATCH https://graph.microsoft.com/v1.0/users/user@contoso.com
 Content-Type: application/json
 
 {
-  "extension_d697ea7bfcb54949bd86b3f886d023e7_LastPasswordSet": "2026-06-25T10:30:00.0000000Z"
+  "extension_00000000000000000000000000000000_LastPasswordSet": "2026-06-25T10:30:00.0000000Z"
 }
 ```
 
 And retrieved with `$select`:
 
 ```http
-GET https://graph.microsoft.com/v1.0/users/user@contoso.com?$select=lastPasswordChangeDateTime,extension_d697ea7bfcb54949bd86b3f886d023e7_LastPasswordSet
+GET https://graph.microsoft.com/v1.0/users/user@contoso.com?$select=lastPasswordChangeDateTime,extension_00000000000000000000000000000000_LastPasswordSet
 ```
 
 To enable temporary account lockout after consecutive failed sign-in attempts, create the custom user attributes referenced by `FailedSignInCountExtensionName` and `LockoutEndUtcExtensionName`. The app stores the consecutive failed-attempt counter and the UTC timestamp until which the account remains blocked. By default, the account is locked after 5 consecutive failed attempts for 30 seconds, and all related values are configurable.
 
 The current configuration expects these lockout attributes to be String-typed custom user attributes:
 
-- `extension_d697ea7bfcb54949bd86b3f886d023e7_FailedCount`
-- `extension_d697ea7bfcb54949bd86b3f886d023e7_LockoutUntil`
+- `extension_00000000000000000000000000000000_FailedCount`
+- `extension_00000000000000000000000000000000_LockoutUntil`
 
 `PasswordMinLength` is also configured under `MicrosoftGraphUserLifecycle` and is enforced by the MVC app during sign-up and password reset before the request is sent to Entra.
 
